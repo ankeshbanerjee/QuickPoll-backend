@@ -141,6 +141,7 @@ export async function votePoll(
       return next(new ErrorHandler(400, "user already voted"));
     }
     poll.options[option].votedBy.push(user.id);
+    poll.totalVotes += 1;
     await poll.save();
     sendResponse(res, 200, {}, "voted successfully");
   } catch (error) {
@@ -173,6 +174,7 @@ export async function unvotePoll(
     poll.options[option].votedBy = poll.options[option].votedBy.filter(
       (it) => it.toString() !== user.id.toString()
     );
+    poll.totalVotes -= 1;
     await poll.save();
     sendResponse(res, 200, {}, "unvoted successfully");
   } catch (error) {
