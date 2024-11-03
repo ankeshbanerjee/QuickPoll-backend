@@ -16,12 +16,13 @@ export async function createPoll(
     if (!user) {
       return next(new ErrorHandler(401, "unauthorized"));
     }
-    const { question, options } = req.body;
+    const { question, options, image, expiry } = req.body;
     await Poll.create({
       question,
       options,
+      image,
       createdBy: user.id,
-      expiry: Date.now(),
+      expiry,
     });
     sendResponse<{}>(res, 201, {}, "poll created successfully");
   } catch (error) {
@@ -31,12 +32,28 @@ export async function createPoll(
 }
 
 export async function getPolls(
-  req: Request,
+  req: Request<
+    {},
+    {},
+    {},
+    {
+      page: number;
+      limit: number;
+    }
+  >,
   res: Response,
   next: NextFunction
 ) {
   try {
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
+    const offset = (page - 1) * limit; // skips the first 'offset' number of documents
+    const total = await Poll.countDocuments();
+    const hasNextPage = offset + limit < total;
     let polls = await Poll.find()
+      .sort({ createdAt: -1 }) // latest polls first
+      .skip(offset)
+      .limit(limit)
       .populate("createdBy")
       .populate({
         path: "options",
@@ -45,10 +62,15 @@ export async function getPolls(
           model: "User",
         },
       });
-    sendResponse<{ polls: IPoll[] }>(
+    sendResponse<{
+      polls: IPoll[];
+      currentPage: number;
+      total: number;
+      hasNextPage: boolean;
+    }>(
       res,
       200,
-      { polls },
+      { polls, currentPage: parseInt(page.toString()), total, hasNextPage },
       "polls fetched successfully"
     );
   } catch (error) {

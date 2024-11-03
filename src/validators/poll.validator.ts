@@ -11,10 +11,7 @@ export const createPollSchema = z.object({
     )
     .min(2),
   image: z.string().optional(),
-  expiry: z.preprocess(
-    (val) => (typeof val === "string" ? new Date(val) : val),
-    z.date()
-  ),
+  expiry: z.string(),
 });
 
 export const voteUnvotePollSchema = z.object({
