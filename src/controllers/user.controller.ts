@@ -76,3 +76,42 @@ export async function getAuthenticatedUser(
     next(error);
   }
 }
+
+export async function updateUser(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      return next(new ErrorHandler(401, "Unauthorized"));
+    }
+    const userId = req.user._id;
+    const updates = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new ErrorHandler(404, "User not found"));
+    }
+
+    const allowedUpdates = Array<keyof IUser>("name", "email", "profilePic");
+    for (const key in updates) {
+      if (allowedUpdates.includes(key as keyof IUser)) {
+        (user as any)[key] = updates[key];
+      }
+    }
+
+    let updatedUser = await user.save();
+
+    sendResponse(
+      res,
+      200,
+      {
+        user: updatedUser,
+      },
+      "User updated successfully"
+    );
+  } catch (error) {
+    next(error);
+  }
+}

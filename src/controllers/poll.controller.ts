@@ -111,7 +111,15 @@ export async function getPollById(
 }
 
 export async function getMyPolls(
-  req: AuthRequest,
+  req: AuthRequest<
+    {},
+    {},
+    {},
+    {
+      page: number;
+      limit: number;
+    }
+  >,
   res: Response,
   next: NextFunction
 ) {
@@ -120,7 +128,17 @@ export async function getMyPolls(
     if (!user) {
       return next(new ErrorHandler(401, "unauthorized"));
     }
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
+    const offset = (page - 1) * limit; // skips the first 'offset' number of documents
+    const total = await Poll.find({
+      createdBy: { $eq: user.id },
+    }).countDocuments();
+    const hasNextPage = offset + limit < total;
     const polls = await Poll.find({ createdBy: { $eq: user.id } })
+      .sort({ createdAt: -1 }) // latest polls first
+      .skip(offset)
+      .limit(limit)
       .populate("createdBy")
       .populate({
         path: "options",
@@ -129,10 +147,15 @@ export async function getMyPolls(
           model: "User",
         },
       });
-    sendResponse<{ polls: IPoll[] }>(
+    sendResponse<{
+      polls: IPoll[];
+      currentPage: number;
+      total: number;
+      hasNextPage: boolean;
+    }>(
       res,
       200,
-      { polls },
+      { polls, currentPage: parseInt(page.toString()), total, hasNextPage },
       "polls fetched successfully"
     );
   } catch (error) {
