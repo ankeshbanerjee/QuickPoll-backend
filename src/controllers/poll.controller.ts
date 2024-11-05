@@ -5,6 +5,8 @@ import { CreatePollDto, VoteUnvotePollDto } from "../dtos/poll.dtos";
 import Poll from "../models/poll.model";
 import { sendResponse } from "../utils/app.utils";
 import { IPoll } from "../types/IPoll";
+import admin from "firebase-admin";
+import User from "../models/user.model";
 
 export async function createPoll(
   req: AuthRequest<{}, {}, CreatePollDto>,
@@ -17,12 +19,33 @@ export async function createPoll(
       return next(new ErrorHandler(401, "unauthorized"));
     }
     const { question, options, image, expiry } = req.body;
-    await Poll.create({
+    const createdPoll = await Poll.create({
       question,
       options,
       image,
       createdBy: user.id,
       expiry,
+    });
+    const usersToSendNotification = await User.find({ _id: { $ne: user.id } });
+    usersToSendNotification.forEach((userToNotifiy) => {
+      if (userToNotifiy.fcmTokens.length > 0) {
+        userToNotifiy.fcmTokens.forEach(async (token) => {
+          const message = {
+            data: {
+              title: user.name + " has created a new poll",
+              body: question,
+              pollId: (createdPoll._id as any).toString(),
+              navigationId: "chat",
+            },
+            token,
+          };
+          try {
+            await admin.messaging().send(message);
+          } catch (error) {
+            console.log("error in sending notification", error);
+          }
+        });
+      }
     });
     sendResponse<{}>(res, 201, {}, "poll created successfully");
   } catch (error) {

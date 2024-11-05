@@ -2,6 +2,13 @@ import { createServer } from "http";
 import app from "./app";
 import { connectToDb } from "./utils/db.utils";
 
+const admin = require("firebase-admin");
+const serviceAccount = require("../firebase-admin.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 const server = createServer(app);
 
 connectToDb();

@@ -23,6 +23,10 @@ const UserSchema = new Schema(
       default:
         "https://www.cornwallbusinessawards.co.uk/wp-content/uploads/2017/11/dummy450x450.jpg",
     },
+    fcmTokens: {
+      type: [{ type: String }],
+      default: [],
+    },
   },
   {
     timestamps: true,

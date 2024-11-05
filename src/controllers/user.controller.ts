@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { CreateUserDto, LoginUserDto } from "../dtos/user.dtos";
+import { CreateUserDto, LoginUserDto, FCMTokenDto } from "../dtos/user.dtos";
 import User from "../models/user.model";
 import { sendResponse } from "../utils/app.utils";
 import bcrypt from "bcrypt";
@@ -111,6 +111,54 @@ export async function updateUser(
       },
       "User updated successfully"
     );
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function saveFCMToken(
+  req: AuthRequest<{}, {}, FCMTokenDto>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { token } = req.body;
+    const userId = req.user?._id;
+    if (!userId) {
+      return next(new ErrorHandler(401, "Unauthorized"));
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new ErrorHandler(404, "User not found"));
+    }
+    if (!user.fcmTokens.includes(token)) {
+      user.fcmTokens.push(token);
+      await user.save();
+    }
+    sendResponse(res, 200, {}, "FCM token saved");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteFCMToken(
+  req: AuthRequest<{}, {}, FCMTokenDto>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { token } = req.body;
+    const userId = req.user?._id;
+    if (!userId) {
+      return next(new ErrorHandler(401, "Unauthorized"));
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new ErrorHandler(404, "User not found"));
+    }
+    user.fcmTokens = user.fcmTokens.filter((t) => t !== token);
+    await user.save();
+    sendResponse(res, 200, {}, "FCM token deleted");
   } catch (error) {
     next(error);
   }
